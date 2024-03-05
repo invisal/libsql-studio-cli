@@ -215,8 +215,19 @@ export default async function handleConnection(file: string) {
     port,
   });
 
+  let connectionCount = 0;
   ws.on("connection", function (socket) {
+    connectionCount++;
+
     new MessageHandler(socket, db, token);
+
+    socket.on("close", () => {
+      connectionCount--;
+      if (connectionCount <= 0) {
+        console.log("No active connection. Close the program");
+        process.exit();
+      }
+    });
   });
 
   console.info("Open LibSQL Studio in the browser");
