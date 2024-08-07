@@ -6,16 +6,11 @@ program.name("sqlstudio");
 
 program
   .version("2.0.2")
-  .option(
-    "--port <port>",
-    "Set port to serve. The default port is 4000",
-    "4000"
-  )
+  .option("--port <port>", "Set port to serve", "4000")
   .option("--user <username>", "Set basic authentication username")
   .option("--pass <password>", "Set basic authentication password")
   .argument("<file>", "sqlite database file")
   .action((file, options) => {
-    console.log(file, options);
     serve(file, {
       port: Number(options.port ?? 4000),
       username: options.user,

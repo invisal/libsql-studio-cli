@@ -67,6 +67,7 @@ export function serve(
     app.use(
       expressBasicAuth({
         users: { [username]: password ?? "" },
+        challenge: true,
       })
     );
   }
