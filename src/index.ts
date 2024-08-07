@@ -1,15 +1,20 @@
 #!/usr/bin/env node
 import { program } from "commander";
-import handleConnection from "./connection";
+import { serve } from "./studio";
 
 program.name("sqlstudio");
 
 program
-  .version("0.1.0")
+  .version("1.0.1")
   .command("open")
   .argument("<file>", "sqlite database file")
-  .action((str) => {
-    handleConnection(str);
+  .option(
+    "-p",
+    "Port you want to serve your sqlite file. The default port is 4000",
+    "4000"
+  )
+  .action((str, options) => {
+    serve(str, Number(options.p));
   });
 
 program.parse();
