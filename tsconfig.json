@@ -7,10 +7,8 @@
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "baseUrl": ".",
-    "outDir": "dist/",
+    "outDir": "dist/"
   },
-  "include": [
-    "src/"
-  ],
+  "include": ["src/"],
   "exclude": ["node_modules"]
 }

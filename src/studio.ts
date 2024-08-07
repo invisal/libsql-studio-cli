@@ -1,5 +1,6 @@
 import express from "express";
 import { ResultSet, createClient } from "@libsql/client";
+import expressBasicAuth from "express-basic-auth";
 
 const htmlCode = `<!doctype>
 <html>
@@ -45,7 +46,14 @@ const htmlCode = `<!doctype>
 </body>
 </html>`;
 
-export function serve(file: string, port: number) {
+export function serve(
+  file: string,
+  {
+    port,
+    username,
+    password,
+  }: { port: number; username?: string; password?: string }
+) {
   const app = express();
 
   const db = createClient({
@@ -55,7 +63,13 @@ export function serve(file: string, port: number) {
 
   app.use(express.json());
 
-  console.log(`Serve: http://localhost:${port}`);
+  if (username) {
+    app.use(
+      expressBasicAuth({
+        users: { [username]: password ?? "" },
+      })
+    );
+  }
 
   app.get("/", (_, res) => {
     return res.send(htmlCode);
@@ -96,6 +110,7 @@ export function serve(file: string, port: number) {
   });
 
   app.listen(port);
+  printServingMessage(port);
 }
 
 interface ResultHeader {
@@ -192,4 +207,61 @@ function transformRawResult(raw: ResultSet): Result {
         ? undefined
         : Number(raw.lastInsertRowid),
   };
+}
+
+function getIPAddress() {
+  var interfaces = require("os").networkInterfaces();
+  for (var devName in interfaces) {
+    var iface = interfaces[devName];
+
+    for (var i = 0; i < iface.length; i++) {
+      var alias = iface[i];
+      if (
+        alias.family === "IPv4" &&
+        alias.address !== "127.0.0.1" &&
+        !alias.internal
+      )
+        return alias.address;
+    }
+  }
+  return "0.0.0.0";
+}
+
+function printServingMessage(port: number) {
+  const text = [
+    "Serving!",
+    `- Local:    http://localhost:${port}`,
+    `- Network:  http://${getIPAddress()}:${port}`,
+  ];
+
+  const paddingY = 2;
+  const paddingX = 4;
+
+  const maxText = Math.max(...text.map((t) => t.length));
+  const topLine = new Array(maxText + paddingX * 2 + 2).fill("═").join("");
+  const space = new Array(maxText + paddingX * 2 + 2).fill(" ").join("");
+  const paddingSpace = space.substring(0, paddingX);
+
+  console.log("╔" + topLine.substring(2) + "╗");
+
+  for (let i = 0; i < paddingY; i++) {
+    console.log("║" + space.substring(2) + "║");
+  }
+
+  for (const line of text) {
+    console.log(
+      "║" +
+        paddingSpace +
+        line +
+        space.substring(0, maxText - line.length) +
+        paddingSpace +
+        "║"
+    );
+  }
+
+  for (let i = 0; i < paddingY; i++) {
+    console.log("║" + space.substring(2) + "║");
+  }
+
+  console.log("╚" + topLine.substring(2) + "╝");
 }

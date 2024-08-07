@@ -5,16 +5,23 @@ import { serve } from "./studio";
 program.name("sqlstudio");
 
 program
-  .version("1.0.1")
+  .version("2.0.2")
   .command("open")
-  .argument("<file>", "sqlite database file")
   .option(
-    "-p",
-    "Port you want to serve your sqlite file. The default port is 4000",
+    "--port <port>",
+    "Set port to serve. The default port is 4000",
     "4000"
   )
-  .action((str, options) => {
-    serve(str, Number(options.p));
+  .option("-u --user <username>", "Set basic authentication username")
+  .option("--pass <password>", "Set basic authentication password")
+  .argument("<file>", "sqlite database file")
+  .action((file, options) => {
+    console.log(file, options);
+    serve(file, {
+      port: Number(options.port ?? 4000),
+      username: options.user,
+      password: options.pass,
+    });
   });
 
 program.parse();
