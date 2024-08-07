@@ -6,13 +6,12 @@ program.name("sqlstudio");
 
 program
   .version("2.0.2")
-  .command("open")
   .option(
     "--port <port>",
     "Set port to serve. The default port is 4000",
     "4000"
   )
-  .option("-u --user <username>", "Set basic authentication username")
+  .option("--user <username>", "Set basic authentication username")
   .option("--pass <password>", "Set basic authentication password")
   .argument("<file>", "sqlite database file")
   .action((file, options) => {
