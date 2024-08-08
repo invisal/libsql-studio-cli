@@ -52,7 +52,8 @@ export function serve(
     port,
     username,
     password,
-  }: { port: number; username?: string; password?: string }
+    log,
+  }: { port: number; username?: string; password?: string; log?: boolean }
 ) {
   const app = express();
 
@@ -87,6 +88,10 @@ export function serve(
 
     try {
       if (body.type === "query") {
+        if (log) {
+          console.log("Query | " + body.statement);
+        }
+
         const r = await db.execute(body.statement);
         return res.json({
           type: body.type,
@@ -95,6 +100,11 @@ export function serve(
         });
       } else {
         const r = await db.batch(body.statements);
+
+        if (log) {
+          body.statements.forEach((s) => console.log("Query | " + s));
+        }
+
         return res.json({
           type: body.type,
           id: body.id,
@@ -110,8 +120,30 @@ export function serve(
     }
   });
 
-  app.listen(port);
+  const server = app.listen(port);
   printServingMessage(port);
+
+  console.log("Press q | shutdown the server");
+
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+
+  process.stdin.on("data", (buffer) => {
+    const c = new TextDecoder().decode(buffer);
+
+    if (c.toUpperCase() === "Q" || buffer[0] === 3) {
+      console.log("Shutting down the server");
+      server.closeAllConnections();
+      process.exit();
+    }
+  });
+
+  process.on("SIGINT", function () {
+    console.log("Caught interrupt signal");
+    console.log("Shutting down the server");
+    server.closeAllConnections();
+    process.exit();
+  });
 }
 
 interface ResultHeader {
@@ -235,7 +267,7 @@ function printServingMessage(port: number) {
     `- Network:  http://${getIPAddress()}:${port}`,
   ];
 
-  const paddingY = 2;
+  const paddingY = 1;
   const paddingX = 4;
 
   const maxText = Math.max(...text.map((t) => t.length));
