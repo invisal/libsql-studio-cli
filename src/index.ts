@@ -5,7 +5,7 @@ import { serve } from "./studio";
 program.name("sqlstudio");
 
 program
-  .version("2.0.2")
+  .version("2.0.3")
   .option("--port <port>", "Set port to serve", "4000")
   .option("--user <username>", "Set basic authentication username")
   .option("--pass <password>", "Set basic authentication password")
