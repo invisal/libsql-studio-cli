@@ -1,6 +1,6 @@
 import express from "express";
-import { ResultSet, createClient } from "@libsql/client";
 import expressBasicAuth from "express-basic-auth";
+import BaseDriver from "./drivers/base";
 
 const htmlCode = `<!doctype>
 <html>
@@ -48,6 +48,7 @@ const htmlCode = `<!doctype>
 
 export function serve(
   file: string,
+  driver: BaseDriver,
   {
     port,
     username,
@@ -56,12 +57,6 @@ export function serve(
   }: { port: number; username?: string; password?: string; log?: boolean }
 ) {
   const app = express();
-
-  const db = createClient({
-    url: "file:" + file,
-    intMode: "number",
-  });
-
   app.use(express.json());
 
   if (username) {
@@ -92,14 +87,14 @@ export function serve(
           console.log("Query | " + body.statement);
         }
 
-        const r = await db.execute(body.statement);
+        const r = await driver.query(body.statement);
         return res.json({
           type: body.type,
           id: body.id,
-          data: transformRawResult(r),
+          data: r,
         });
       } else {
-        const r = await db.batch(body.statements);
+        const r = await driver.batch(body.statements);
 
         if (log) {
           body.statements.forEach((s) => console.log("Query | " + s));
@@ -108,7 +103,7 @@ export function serve(
         return res.json({
           type: body.type,
           id: body.id,
-          data: r.map(transformRawResult),
+          data: r,
         });
       }
     } catch (e) {
@@ -144,102 +139,6 @@ export function serve(
     server.closeAllConnections();
     process.exit();
   });
-}
-
-interface ResultHeader {
-  name: string;
-  displayName: string;
-  originalType: string | null;
-  type: ColumnType;
-}
-
-interface Result {
-  rows: Record<string, unknown>[];
-  headers: ResultHeader[];
-  stat: {
-    rowsAffected: number;
-    rowsRead: number | null;
-    rowsWritten: number | null;
-    queryDurationMs: number | null;
-  };
-  lastInsertRowid?: number;
-}
-
-enum ColumnType {
-  TEXT = 1,
-  INTEGER = 2,
-  REAL = 3,
-  BLOB = 4,
-}
-
-function convertSqliteType(type: string | undefined): ColumnType {
-  // https://www.sqlite.org/datatype3.html
-  if (type === undefined) return ColumnType.BLOB;
-
-  type = type.toUpperCase();
-
-  if (type.includes("CHAR")) return ColumnType.TEXT;
-  if (type.includes("TEXT")) return ColumnType.TEXT;
-  if (type.includes("CLOB")) return ColumnType.TEXT;
-  if (type.includes("STRING")) return ColumnType.TEXT;
-
-  if (type.includes("INT")) return ColumnType.INTEGER;
-
-  if (type.includes("BLOB")) return ColumnType.BLOB;
-
-  if (
-    type.includes("REAL") ||
-    type.includes("DOUBLE") ||
-    type.includes("FLOAT")
-  )
-    return ColumnType.REAL;
-
-  return ColumnType.TEXT;
-}
-
-function transformRawResult(raw: ResultSet): Result {
-  const headerSet = new Set();
-
-  const headers: ResultHeader[] = raw.columns.map((colName, colIdx) => {
-    const colType = raw.columnTypes[colIdx];
-    let renameColName = colName;
-
-    for (let i = 0; i < 20; i++) {
-      if (!headerSet.has(renameColName)) break;
-      renameColName = `__${colName}_${i}`;
-    }
-
-    headerSet.add(renameColName);
-
-    return {
-      name: renameColName,
-      displayName: colName,
-      originalType: colType,
-      type: convertSqliteType(colType),
-    };
-  });
-
-  const rows = raw.rows.map((r) =>
-    headers.reduce((a, b, idx) => {
-      a[b.name] = r[idx];
-      return a;
-    }, {} as Record<string, unknown>)
-  );
-
-  return {
-    rows,
-    stat: {
-      rowsAffected: raw.rowsAffected,
-      rowsRead: null,
-      rowsWritten: null,
-      queryDurationMs: 0,
-    },
-    headers,
-    lastInsertRowid:
-      raw.lastInsertRowid === undefined
-        ? undefined
-        : Number(raw.lastInsertRowid),
-  };
 }
 
 function getIPAddress() {

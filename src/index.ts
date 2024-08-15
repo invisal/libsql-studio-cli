@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { program } from "commander";
 import { serve } from "./studio";
+import TursoDriver from "./drivers/sqlite";
 
 program.name("sqlstudio");
 
@@ -12,7 +13,9 @@ program
   .option("-l --log", "Enable log that show all the SQL executed")
   .argument("<file>", "sqlite database file")
   .action((file, options) => {
-    serve(file, {
+    const driver = new TursoDriver("file::" + file);
+
+    serve(file, driver, {
       port: Number(options.port ?? 4000),
       username: options.user,
       password: options.pass,
