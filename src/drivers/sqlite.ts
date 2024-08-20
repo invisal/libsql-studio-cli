@@ -1,4 +1,4 @@
-import { Client, createClient, ResultSet } from "@libsql/client/.";
+import { Client, createClient, ResultSet } from "@libsql/client";
 import BaseDriver, { ColumnType, Result, ResultHeader } from "./base";
 
 function convertSqliteType(type: string | undefined): ColumnType {

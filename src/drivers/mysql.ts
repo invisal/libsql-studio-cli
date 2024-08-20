@@ -1,5 +1,5 @@
 import BaseDriver, { ColumnType, Result, ResultHeader } from "./base";
-import { Pool, createPool } from "mysql2/promise";
+import { Pool, PoolConnection, createPool } from "mysql2/promise";
 
 enum MySQLType {
   MYSQL_TYPE_DECIMAL,
@@ -103,6 +103,7 @@ interface ColumnDefinition {
   _orgNameLength: number;
   _orgNameStart: number;
   type: number;
+  typeName: string;
   name: string;
   flags: number;
 }
@@ -127,6 +128,7 @@ export default class MySQLDriver implements BaseDriver {
     if (this.db) return this.db;
     this.db = createPool({
       ...this.connectionString,
+      rowsAsArray: true,
       dateStrings: true,
       pool: { min: 1, max: 1 },
       connectionLimit: 1,
@@ -134,8 +136,11 @@ export default class MySQLDriver implements BaseDriver {
     return this.db;
   }
 
-  async execute(conn: Pool, statement: string): Promise<Result> {
-    const [result, fieldsets] = await conn.query(statement);
+  async execute(
+    conn: Pool | PoolConnection,
+    statement: string
+  ): Promise<Result> {
+    const [result, fieldsets] = await conn.execute(statement);
 
     // If it is not an array, it means
     // it is not a SELECT statement
@@ -166,7 +171,7 @@ export default class MySQLDriver implements BaseDriver {
         return {
           displayName: raw.name,
           name: renameColName,
-          originalType: raw.type.toString(),
+          originalType: raw.typeName,
           type: mapDataType(raw.type),
         };
       }
@@ -198,7 +203,8 @@ export default class MySQLDriver implements BaseDriver {
   }
 
   async batch(statements: string[]): Promise<Result[]> {
-    const conn = await this.getConnection();
+    const pool = await this.getConnection();
+    const conn = await pool.getConnection();
 
     try {
       await conn.beginTransaction();
@@ -210,9 +216,12 @@ export default class MySQLDriver implements BaseDriver {
       }
 
       await conn.commit();
+      pool.releaseConnection(conn);
       return resultCollection;
     } catch (e) {
+      console.log(e);
       await conn.rollback();
+      pool.releaseConnection(conn);
       throw new Error(e);
     }
   }

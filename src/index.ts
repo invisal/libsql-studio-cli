@@ -13,9 +13,9 @@ program
   .option("-l --log", "Enable log that show all the SQL executed")
   .argument("<file>", "sqlite database file")
   .action((file, options) => {
-    const driver = new TursoDriver("file::" + file);
+    const driver = new TursoDriver("file:" + file);
 
-    serve(file, driver, {
+    serve(driver, {
       port: Number(options.port ?? 4000),
       username: options.user,
       password: options.pass,

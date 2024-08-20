@@ -41,20 +41,26 @@ const htmlCode = `<!doctype>
 
   <iframe
     id="editor"
-    src="https://libsqlstudio.com/embed/sqlite"
+    src=$studio
   />
 </body>
 </html>`;
 
 export function serve(
-  file: string,
   driver: BaseDriver,
   {
+    studio,
     port,
     username,
     password,
     log,
-  }: { port: number; username?: string; password?: string; log?: boolean }
+  }: {
+    port: number;
+    username?: string;
+    password?: string;
+    log?: boolean;
+    studio?: string;
+  }
 ) {
   const app = express();
   app.use(express.json());
@@ -69,7 +75,12 @@ export function serve(
   }
 
   app.get("/", (_, res) => {
-    return res.send(htmlCode);
+    return res.send(
+      htmlCode.replace(
+        "$studio",
+        studio ?? "https://libsqlstudio.com/embed/sqlite"
+      )
+    );
   });
 
   app.post("/query", async (req, res) => {
@@ -84,7 +95,7 @@ export function serve(
     try {
       if (body.type === "query") {
         if (log) {
-          console.log("Query | " + body.statement);
+          console.log(body.id + " Query | " + body.statement);
         }
 
         const r = await driver.query(body.statement);
@@ -94,12 +105,13 @@ export function serve(
           data: r,
         });
       } else {
-        const r = await driver.batch(body.statements);
-
         if (log) {
-          body.statements.forEach((s) => console.log("Query | " + s));
+          body.statements.forEach((s) =>
+            console.log(body.id + " Query | " + s)
+          );
         }
 
+        const r = await driver.batch(body.statements);
         return res.json({
           type: body.type,
           id: body.id,
@@ -108,8 +120,8 @@ export function serve(
       }
     } catch (e) {
       return res.json({
-        type: e.data.type,
-        id: e.data.id,
+        type: body.type,
+        id: body.id,
         error: (e as Error).message,
       });
     }
